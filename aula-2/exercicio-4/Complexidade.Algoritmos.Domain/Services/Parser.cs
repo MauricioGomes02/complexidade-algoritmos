@@ -21,8 +21,9 @@ public class Parser : IParser
         // F -> EndStatesLine G
         // EndStatesLine -> state StateList
         // G -> newLine TransitionsLine
-        // TransitionsLine -> state symbol state TransitionList
-        // newList state symbol state TransitionList | &
+        // TransitionsLine -> state Input state TransitionList
+        // newList state Input state TransitionList | &
+        // Input -> & | symbol
 
         return ProcessAutomaton(tokens);
     }
@@ -301,14 +302,14 @@ public class Parser : IParser
             throw new InvalidOperationException();
         }
 
-        var symbol = enumerator.Current;
-        if (symbol.EToken != EToken.AlphabetSymbol)
+        var input = enumerator.Current;
+        if (input.EToken != EToken.AlphabetSymbol && input.EToken != EToken.EmptyWord)
         {
             throw new InvalidOperationException();
         }
 
         var transition = new KeyValuePair<TransitionFunctionKey, string>(
-            new TransitionFunctionKey(previousState.Value, symbol.Value),
+            new TransitionFunctionKey(previousState.Value, input.Value),
             destinationState.Value);
 
         var response = new List<KeyValuePair<TransitionFunctionKey, string>> { transition };
@@ -363,14 +364,14 @@ public class Parser : IParser
             throw new InvalidOperationException();
         }
 
-        var symbol = enumerator.Current;
-        if (symbol.EToken != EToken.AlphabetSymbol)
+        var input = enumerator.Current;
+        if (input.EToken != EToken.AlphabetSymbol && input.EToken != EToken.EmptyWord)
         {
             throw new InvalidOperationException();
         }
 
         var transition = new KeyValuePair<TransitionFunctionKey, string>(
-            new TransitionFunctionKey(previousState.Value, symbol.Value),
+            new TransitionFunctionKey(previousState.Value, input.Value),
             destinationState.Value);
 
         var response = new List<KeyValuePair<TransitionFunctionKey, string>> { transition };

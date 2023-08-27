@@ -12,6 +12,7 @@ public class Lexer : ILexer
     private readonly IConfiguration _configuration;
 
     private const string DefaultStatePrefix = "q";
+    private const string EmptyWord = "&";
 
     public Lexer(IConfiguration configuration)
     {
@@ -54,7 +55,7 @@ public class Lexer : ILexer
 
                 var element = stringBuilder.ToString();
                 stringBuilder.Clear();
-                
+
                 Token token;
 
                 if (element == string.Empty)
@@ -65,6 +66,10 @@ public class Lexer : ILexer
                 if (Regex.IsMatch(element, @$"^{statePrefix}[0-9]$"))
                 {
                     token = new Token(EToken.State, element);
+                }
+                else if (element == EmptyWord)
+                {
+                    token = new Token(EToken.EmptyWord, element);
                 }
                 else
                 {

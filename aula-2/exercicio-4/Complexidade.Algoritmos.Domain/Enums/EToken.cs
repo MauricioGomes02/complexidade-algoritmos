@@ -2,10 +2,9 @@
 
 public enum EToken
 {
-    InitialState,
     State,
     AlphabetSymbol,
     NewLine,
     TransitionFunction,
-    EndState
+    EmptyWord
 }

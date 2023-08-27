@@ -8,6 +8,8 @@ public class NonDeterministicFiniteAutomaton
     private readonly IEnumerable<string> _endStates;
     private readonly IDictionary<TransitionFunctionKey, IEnumerable<string>> _transitionFunctions;
 
+    private const string EmptyWord = "&";
+
     public NonDeterministicFiniteAutomaton(
         string initialState,
         IEnumerable<string> alphabetSymbols,
@@ -30,7 +32,7 @@ public class NonDeterministicFiniteAutomaton
     {
         foreach (var symbol in word)
         {
-            if (!_alphabetSymbols.Contains(symbol))
+            if (!_alphabetSymbols.Contains(symbol) && symbol != EmptyWord)
             {
                 return false;
             }
