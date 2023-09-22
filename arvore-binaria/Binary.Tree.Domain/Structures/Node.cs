@@ -2,20 +2,30 @@
 
 public class Node
 {
-    public Node(
+    internal Node(
         int key,
-        Node? father = null,
         Node? left = null,
-        Node? right = null)
+        Node? right = null,
+        Node? father = null)
     {
         Key = key;
-        Father = father;
         Left = left;
         Right = right;
+        Father = father;
     }
 
     public int Key { get; private set; }
-    public Node? Father { get; private set; }
     public Node? Left { get; private set; }
     public Node? Right { get; private set; }
+    public Node? Father { get; private set; }
+
+    internal void AddLeft(int key, Node? father)
+    {
+        Left = new Node(key, father: father);
+    }
+
+    internal void AddRight(int key, Node? father)
+    {
+        Right = new Node(key, father: father);
+    }
 }
