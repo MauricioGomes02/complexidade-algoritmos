@@ -24,8 +24,23 @@ public class Node
         Left = new Node(key, father: father);
     }
 
+    internal void AddLeft(Node node)
+    {
+        Left = node;
+    }
+
     internal void AddRight(int key, Node? father)
     {
         Right = new Node(key, father: father);
+    }
+
+    internal void AddRight(Node node)
+    {
+        Right = node;
+    }
+
+    internal void AddFather(Node? father)
+    {
+        Father = father;
     }
 }

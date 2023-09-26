@@ -1,46 +1,83 @@
-﻿using Binary.Tree.Domain.Exceptions;
-using Binary.Tree.Domain.Structures;
+﻿using Binary.Tree.Domain.Structures;
 
 namespace Binary.Tree.Domain;
 
 public class BinaryTree
 {
-    public BinaryTree(IEnumerable<int> keys)
+    public BinaryTree(IEnumerable<int> keys = null)
     {
         if (keys is null || !keys.Any())
         {
-            throw new ArgumentException("Must provide at least one key");
+            return;
         }
 
-        var firstKey = keys.First();
-        Root = new Node(firstKey);
-        var currentNode = Root;
-
-        foreach (var key in keys.Skip(1)) 
+        foreach (var key in keys)
         {
-            if (key <= currentNode!.Key)
-            {
-                currentNode.AddLeft(key, currentNode);
-                currentNode = currentNode.Left;
-                continue;
-            }
-
-            if (key >= currentNode!.Key)
-            {
-                currentNode.AddRight(key, currentNode);
-                currentNode = currentNode.Right;
-            }
+            Insert(key);
         }
     }
 
-    public Node Root { get; private set; }
+    public Node? Root { get; private set; }
 
     public Node? Search(int key)
     {
         return Search(key, Root);
     }
 
-    private Node? Search(int key, Node node)
+
+    public void Insert(int key)
+    {
+        var currentNode = Root;
+        var auxiliarNode = null as Node;
+
+        while (currentNode is not null)
+        {
+            auxiliarNode = currentNode;
+            currentNode = key < currentNode.Key ? currentNode.Left : currentNode.Right;
+        }
+
+        if (auxiliarNode is null)
+        {
+            Root = new Node(key);
+            return;
+        }
+
+        if (key < auxiliarNode.Key)
+        {
+            auxiliarNode.AddLeft(key, auxiliarNode);
+            return;
+        }
+
+        auxiliarNode.AddRight(key, auxiliarNode);
+    }
+
+    public void Delete(Node node)
+    {
+        if (node.Left is null)
+        {
+            Transplant(node, node.Right!);
+            return;
+        }
+
+        if (node.Right is null)
+        {
+            Transplant(node, node.Left!);
+            return;
+        }
+        
+        var minimumNode = Minimum(node.Right);
+        if (!ReferenceEquals(minimumNode?.Father, node))
+        {
+            Transplant(minimumNode!, minimumNode!.Right!);
+            minimumNode.AddRight(node.Right!);
+            minimumNode.Right!.AddFather(minimumNode);
+        }
+        Transplant(node, minimumNode!);
+        minimumNode!.AddLeft(node.Left);
+        minimumNode.Left!.AddFather(minimumNode);
+    }
+
+    private Node? Search(int key, Node? node)
     {
         if (node is null || node.Key == key)
         {
@@ -53,5 +90,35 @@ public class BinaryTree
         }
 
         return Search(key, node.Right!);
+    }
+
+    private void Transplant(Node original, Node @new)
+    {
+        if (original.Father is null)
+        {
+            Root = @new;
+            return;
+        }
+
+        if (ReferenceEquals(original, original.Father.Left))
+        {
+            original.Father.AddLeft(@new);
+        }
+        else
+        {
+            original.Father.AddRight(@new);
+        }
+
+        @new?.AddFather(original.Father);
+    }
+
+    private static Node? Minimum(Node? node)
+    {
+        while (node?.Left is not null)
+        {
+            node = node.Left;
+        }
+
+        return node;
     }
 }
