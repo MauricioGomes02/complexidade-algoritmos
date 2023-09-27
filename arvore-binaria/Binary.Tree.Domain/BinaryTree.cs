@@ -1,124 +1,210 @@
-﻿using Binary.Tree.Domain.Structures;
+﻿using Binary.Tree.Domain.Exceptions;
+using Binary.Tree.Domain.Structures;
 
 namespace Binary.Tree.Domain;
 
 public class BinaryTree
 {
-    public BinaryTree(IEnumerable<int> keys = null)
+    public BinaryTree()
     {
-        if (keys is null || !keys.Any())
-        {
-            return;
-        }
-
-        foreach (var key in keys)
-        {
-            Insert(key);
-        }
+        Root = null;
     }
 
-    public Node? Root { get; private set; }
+    public BinaryTreeNode? Root { get;  set; }
 
-    public Node? Search(int key)
+    public BinaryTreeNode? Search(int key)
     {
-        return Search(key, Root);
+        var node = Root;
+        while (node is not null)
+        {
+            if (node.Key == key)
+            {
+                return node;
+            }
+
+            if (key < node.Key)
+            {
+                node = node.Left;
+            }
+            else
+            {
+                node = node.Right;
+            }
+        }
+
+        return null;
     }
 
-
-    public void Insert(int key)
+    public virtual void Insert(int key)
     {
-        var currentNode = Root;
-        var auxiliarNode = null as Node;
-
-        while (currentNode is not null)
-        {
-            auxiliarNode = currentNode;
-            currentNode = key < currentNode.Key ? currentNode.Left : currentNode.Right;
-        }
-
-        if (auxiliarNode is null)
-        {
-            Root = new Node(key);
-            return;
-        }
-
-        if (key < auxiliarNode.Key)
-        {
-            auxiliarNode.AddLeft(key, auxiliarNode);
-            return;
-        }
-
-        auxiliarNode.AddRight(key, auxiliarNode);
+        var node = new BinaryTreeNode(key);
+        Insert(node);
     }
 
-    public void Delete(Node node)
+    public virtual void Insert(BinaryTreeNode node)
     {
-        if (node.Left is null)
+        if (Root is null)
         {
-            Transplant(node, node.Right!);
+            Root = node;
+            node.Tree = this;
             return;
         }
 
-        if (node.Right is null)
-        {
-            Transplant(node, node.Left!);
-            return;
-        }
-        
-        var minimumNode = Minimum(node.Right);
-        if (!ReferenceEquals(minimumNode?.Father, node))
-        {
-            Transplant(minimumNode!, minimumNode!.Right!);
-            minimumNode.AddRight(node.Right!);
-            minimumNode.Right!.AddFather(minimumNode);
-        }
-        Transplant(node, minimumNode!);
-        minimumNode!.AddLeft(node.Left);
-        minimumNode.Left!.AddFather(minimumNode);
-    }
+        node.Father ??= Root;
 
-    private Node? Search(int key, Node? node)
-    {
-        if (node is null || node.Key == key)
+        if (node.Key == node.Father.Key)
         {
-            return node;
+            throw new DuplicateKeyException();
         }
 
-        if (key < node.Key)
+        // Left
+        if (node.Key < node.Father.Key)
         {
-            return Search(key, node.Left!);
+            if (node.Father.Left is null)
+            {
+                node.Father.Left = node;
+                node.Tree = this;
+            }
+            else
+            {
+                node.Father = node.Father.Left;
+                Insert(node);
+            }
         }
-
-        return Search(key, node.Right!);
-    }
-
-    private void Transplant(Node original, Node @new)
-    {
-        if (original.Father is null)
-        {
-            Root = @new;
-            return;
-        }
-
-        if (ReferenceEquals(original, original.Father.Left))
-        {
-            original.Father.AddLeft(@new);
-        }
+        // Right
         else
         {
-            original.Father.AddRight(@new);
+            if (node.Father.Right is null)
+            {
+                node.Father.Right = node;
+                node.Tree = this;
+            }
+            else
+            {
+                node.Father = node.Father.Right;
+                Insert(node);
+            }
         }
-
-        @new?.AddFather(original.Father);
     }
 
-    private static Node? Minimum(Node? node)
+    public virtual bool Delete(int key)
     {
-        while (node?.Left is not null)
+        var node = Search(key);
+        return Delete(node);
+    }
+
+    public virtual bool Delete(BinaryTreeNode? node)
+    {
+        if (node is null)
         {
-            node = node.Left;
+            return false;
         }
 
-        return node;
+        // Root
+        if (ReferenceEquals(Root, node) && node.Left is null && node.Right is null)
+        {
+            Root = null;
+            node.Tree = null;
+            return true;
+        }
+
+        // No Children
+        if (node.Left is null && node.Right is null)
+        {
+            var father = node.Father!;
+            if (IsLeftChild(node))
+            {
+                father.Left = null;
+            }
+            else
+            {
+                father.Right = null;
+            }
+
+            node.Tree = null;
+            node.Father = null;
+        }
+        // One Children
+        else if (node.Left is not null && node.Right is null)
+        {
+            var father = node.Father!;
+            node.Left.Father = father;
+
+            if (ReferenceEquals(Root, node))
+            {
+                Root = node.Left;
+            }
+
+            if (IsLeftChild(node))
+            {
+                father.Left = node.Left;
+            }
+            else
+            {
+                father.Right = node.Left;
+            }
+        }
+        else if (node.Right is not null && node.Left is null)
+        {
+            var father = node.Father;
+            node.Right.Father = father;
+
+            if (ReferenceEquals(Root, node))
+            {
+                Root = node.Right;
+            }
+
+            if (father is not null)
+            {
+                if (IsLeftChild(node))
+                {
+                    father.Left = node.Right;
+                }
+                else
+                {
+                    father.Right = node.Right;
+                }
+            }
+        }
+        // Two Children
+        else
+        {
+            // predecessor key (right-most node in left subtree)
+            var successorNode = node.Left!;
+            while (successorNode.Right is not null)
+            {
+                successorNode = successorNode.Right;
+            }
+
+            node.Key = successorNode.Key;
+            Delete(successorNode);
+        }
+
+        return true;
+    }
+
+    public virtual int GetHeight()
+    {
+        return GetHeight(Root);
+    }
+
+    public virtual int GetHeight(BinaryTreeNode? node)
+    {
+        if (node is null)
+        {
+            return 0;
+        }
+
+        return 1 + Math.Max(GetHeight(node.Left), GetHeight(node.Right));
+    }
+
+    protected static bool IsLeftChild(BinaryTreeNode? node)
+    {
+        if (node is null)
+        {
+            return false;
+        }
+
+        return node.Father is not null && ReferenceEquals(node, node.Father.Left);
     }
 }
