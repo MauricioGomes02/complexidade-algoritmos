@@ -149,38 +149,57 @@ def memoization(subproblem):
     memo = {}
     return get_subproblem_solution
 
+def a_start_aux(map, control):
+    matrix = map['matrix']
+    end = map['end']
+    came_from = control['came_from']
+    cost_so_far = control['cost_so_far']
+    vertice = control['vertice']
+    current_vertice = vertice
+
+    priority_queue = PriorityQueue()
+    for next_vertice in get_neighbors(matrix, current_vertice):
+        new_cost = cost_so_far[current_vertice] + get_cost(matrix, next_vertice) + 1
+        if next_vertice not in cost_so_far or new_cost < cost_so_far[next_vertice]:
+            cost_so_far[next_vertice] = new_cost
+            priority = new_cost + heuristic(end, next_vertice)
+            priority_queue.put(next_vertice, priority)
+            came_from[next_vertice] = current_vertice
+
+    while not priority_queue.empty():
+        new_vertice = priority_queue.get()
+        control['vertice'] = new_vertice
+        a_start_aux(map, control)
+
 def a_star(map):
     start = map['start']
     end = map['end']
     matrix = map['matrix']
-    frontier = PriorityQueue()
     start_cost = get_cost(matrix, start)
-    frontier.put(start, start_cost)
-    came_from = dict()
-    cost_so_far = dict()
-    came_from[start] = None
-    cost_so_far[start] = start_cost
+    came_from = { start: None }
+    cost_so_far = { start: start_cost }
 
-    while not frontier.empty():
-        current_vertice = frontier.get()
+    control = {
+        'came_from': came_from,
+        'cost_so_far': cost_so_far,
+        'vertice': start
+    }
 
-        for next_vertice in get_neighbors(matrix, current_vertice):
-            new_cost = cost_so_far[current_vertice] + get_cost(matrix, next_vertice)
-            if next_vertice not in cost_so_far or new_cost < cost_so_far[next_vertice]:
-                cost_so_far[next_vertice] = new_cost
-                priority = new_cost + heuristic(end, next_vertice)
-                frontier.put(next_vertice, priority)
-                came_from[next_vertice] = current_vertice
+    a_start_aux(map, control)
 
-    result = dict()
-    result['cost'] = cost_so_far[end]
-    result['path'] = get_path(came_from, end, start)
-
+    result = {
+        'cost': cost_so_far[end],
+        'path': get_path(came_from, end, start)
+    }
     return result
 
 def get_path(came_from, end, start):
     path = [end]
     current_path = came_from[end]
+
+    if current_path is None:
+        return path
+
     path.append(current_path)
     while current_path != start:
         current_path = came_from[current_path]
@@ -260,12 +279,12 @@ def print_path(path, map):
 
 def print_exit(cost, coordinates):
     exit = f'{cost}'
-    count = len(coordinates) - 1
-    while count > 0:
+    count = 0
+    while count < len(coordinates):
         coordinate = coordinates[count]
         (x, y) = coordinate
         exit += f'  {x},{y}'
-        count -= 1
+        count += 1
     print(exit)
 
 def get_best_path(path):
