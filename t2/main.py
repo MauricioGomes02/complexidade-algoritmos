@@ -1,6 +1,236 @@
 import os
 from queue import PriorityQueue
 
+class Coordinate:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+class Vertice:
+    def __init__(self, coordinate, cost):
+        self.coordinate = coordinate
+        self.cost = cost
+
+class Graph:
+    def __init__(self):
+        self.vertices = {}
+        self.edges = {}
+
+    def add_vertice(self, x, y, cost):
+        new_vertice_key = (x, y)
+        if new_vertice_key in self.vertices:
+            raise Exception(f'O vertice ({x}, {y}) já foi adicionado')
+        
+        coordinate = Coordinate(x, y)
+        new_vertice = Vertice(coordinate, cost)
+        self.vertices[new_vertice_key] = new_vertice
+
+    def get_vertice(self, x, y) -> Vertice:
+        vertice = (x, y)
+        if vertice not in self.vertices:
+            raise Exception(f'O vertice ({x}, {y}) não existe')
+        
+        return self.vertices[vertice]
+        
+    def add_edge(self, from_vertice, to_vertice):
+        from_x = from_vertice.coordinate.x
+        from_y = from_vertice.coordinate.y
+
+        to_x = to_vertice.coordinate.x
+        to_y = to_vertice.coordinate.y
+
+        vertice_key = (from_x, from_y)
+
+        if vertice_key not in self.edges:
+            self.edges[vertice_key] = []
+
+        vertices = self.edges[vertice_key]
+        if to_vertice in vertices:
+            raise Exception(f'A aresta ({from_x}, {from_y}) para ({to_x}, {to_y}) já foi adicionada')
+        
+        vertices.append(to_vertice)
+
+    def get_neighbors(self, vertice):
+        x = vertice.coordinate.x
+        y = vertice.coordinate.y
+
+        vertice_key = (x, y)
+        if vertice_key not in self.edges:
+            raise Exception(f'O vertice ({x}, {y}) não possui vizinhos')
+
+        return self.edges[vertice_key]
+    
+class Size:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+
+class InputFile:
+    def __init__(self, first_line, second_line, other_lines):
+        self.size = self.__get_size__(first_line)
+        self.matrix = self.__get_matrix__(other_lines)
+        self.start = self.__get_start__(second_line)
+        self.end = self.__get_end__()
+
+    def get_graph(self) -> Graph:
+        graph = Graph()
+
+        self.__add_vertices__(graph)
+        self.__add_edges__(graph)
+
+        return graph
+
+    def __add_vertices__(self, graph):
+        line_count = 0
+
+        while line_count < self.size.height:
+            column_count = 0
+
+            while column_count < self.size.width:
+                graph.add_vertice(column_count, line_count, self.matrix[line_count][column_count])
+                column_count += 1
+            
+            line_count += 1
+
+    def __add_edges__(self, graph):
+        line_count = 0
+
+        while line_count < self.size.height:
+            column_count = 0
+
+            while column_count < self.size.width:
+                vertice = graph.get_vertice(column_count, line_count)
+
+                 # top
+                if line_count - 1 >= 0 and self.matrix[line_count - 1][column_count] >= 0:
+                    top_neighbor = graph.get_vertice(column_count, line_count - 1)
+                    graph.add_edge(vertice, top_neighbor)
+
+                # left
+                if column_count - 1 >= 0 and self.matrix[line_count][column_count - 1] >= 0:
+                    left_neighbor = graph.get_vertice(column_count - 1, line_count)
+                    graph.add_edge(vertice, left_neighbor)
+
+                # bottom
+                if line_count + 1 < len(self.matrix) and self.matrix[line_count + 1][column_count] >= 0:
+                    bottom_neighbor = graph.get_vertice(column_count, line_count + 1)
+                    graph.add_edge(vertice, bottom_neighbor)
+
+                # right
+                if column_count + 1 < len(self.matrix[0]) and self.matrix[line_count][column_count + 1] >= 0:
+                    right_neighbor = graph.get_vertice(column_count + 1, line_count)
+                    graph.add_edge(vertice, right_neighbor)
+
+                column_count += 1
+            
+            line_count += 1
+
+    def __get_size__(self, line):
+        if len(line) <= 2:
+            raise Exception('A primeira linha deve possuir pelo menos 3 caracteres')
+    
+        elements = line.split()
+        if len(elements) != 2:
+            raise Exception('A primeira linha deve possuir pelo menos 2 elementos (largura, altura)')
+        
+        width = int(elements[0])
+        height = int(elements[1])
+
+        return Size(width, height)
+    
+    def __get_matrix__(self, lines):
+        width = self.size.width
+        height = self.size.height
+
+        if len(lines) != height:
+            raise Exception('A quantidade de linhas do mapa não pode ser diferente da sua altura')
+        
+        matrix = []
+        line_count = 0
+        while line_count < height:
+            matrix.append([])
+            line = lines[line_count]
+            elements = line.strip().split()
+            if len(elements) != width:
+                raise Exception('A quantidade de colunas do mapa não pode ser diferente da sua largura')
+            
+            column_count = 0
+            while column_count < width:
+                cost = int(elements[column_count])
+                if cost < -1:
+                    raise Exception('Os valores não podem ser menores que -1')
+                
+                matrix[line_count].append(cost)
+                column_count += 1
+            line_count += 1
+
+        return matrix
+    
+    def __get_start__(self, line) -> Coordinate:
+        width = self.size.width
+        height = self.size.height
+
+        if len(line) <= 2:
+            raise Exception('A segunda linha deve possuir pelo menos 3 caracteres')
+        
+        elements = line.strip().split()
+        if len(elements) != 2:
+            raise Exception('A segunda linha deve possuir pelo menos 2 elementos (x, y)')
+        
+        x = int(elements[0])
+        y = int(elements[1])
+
+        if x < 0 or y < 0:
+            raise Exception('Os valores da coordenada não podem ser menores que zero')
+
+        if x > width - 1:
+            raise Exception('O eixo x da posição inicial não pode ser maior que a quantidade de colunas')
+        
+        if y > height - 1:
+            raise Exception('O eixo y da posição inicial não pode ser maior que a quantidade de linhas')
+        
+        if self.matrix[y][x] < 0:
+            raise Exception('A posição inicial não pode estar em um local inacessível')
+
+        return Coordinate(x, y)
+    
+    def __get_end__(self):
+        while True:
+            _input = input('Informe a coordenada de destino: (formato: \'x y\'): ')
+            elements = _input.strip().split()
+            if len(elements) != 2:
+                print('A entrada deve possuir apenas 2 elementos')
+                continue
+
+            try:
+                vertice = Coordinate(int(elements[0]), int(elements[1]))
+
+                x = vertice.x
+                y = vertice.y
+
+                width = self.size.width
+                height = self.size.height
+
+                if x < 0 or y < 0:
+                    raise Exception('Os valores da coordenada não podem ser menores que zero')
+
+                if x > width - 1:
+                    raise Exception('O eixo x da posição final não pode ser maior que a quantidade de colunas')
+                
+                if y > height - 1:
+                    raise Exception('O eixo y da posição final não pode ser maior que a quantidade de linhas')
+                
+                if self.matrix[y][x] < 0:
+                    raise Exception('A posição final não pode estar em um local inacessível')
+
+                if x < 0 or y < 0:
+                    raise Exception('Os valores da coordenada não podem ser menores que zero')
+
+                return vertice
+                
+            except Exception as exception:
+                print(exception)
+
 def get_current_directory():
     return os.getcwd()
 
@@ -12,280 +242,67 @@ def get_file_lines(file_path):
         lines = file.readlines()
         return lines
     
-def get_first_line(line):
-    if len(line) <= 2:
-        raise Exception('A primeira linha deve possuir pelo menos 3 caracteres')
-    
-    elements = line.split()
-    if len(elements) != 2:
-        raise Exception('A primeira linha deve possuir pelo menos 2 elementos (largura, altura)')
-    
-    width = int(elements[0])
-    height = int(elements[1])
+def heuristic(_from, to):
+    from_coordinate = _from.coordinate
+    from_x = from_coordinate.x
+    from_y = from_coordinate.y
 
-    size = dict()
-    size['width'] = width
-    size['height'] = height
-    return size
+    to_coordinate = to.coordinate
+    to_x = to_coordinate.x
+    to_y = to_coordinate.y
 
-def get_second_line(line, size, matrix):
-    width = size['width']
-    height = size['height']
+    return abs(from_x - to_x) + abs(from_y - to_y)
 
-    if len(line) <= 2:
-        raise Exception('A segunda linha deve possuir pelo menos 3 caracteres')
-    
-    elements = line.strip().split()
-    if len(elements) != 2:
-        raise Exception('A segunda linha deve possuir pelo menos 2 elementos (x, y)')
-    
-    x = int(elements[0])
-    y = int(elements[1])
+def a_star(graph, start_coordinate, end_coordinate):
+    start_x = start_coordinate.x
+    start_y = start_coordinate.y
+    start_key = (start_x, start_y)
 
-    if x < 0 or y < 0:
-        raise Exception('Os valores da coordenada não podem ser menores que zero')
+    end_x = end_coordinate.x
+    end_y = end_coordinate.y
+    end_key = (end_x, end_y)
 
-    if x > width - 1:
-        raise Exception('O eixo x da posição inicial não pode ser maior que a quantidade de colunas')
-    
-    if y > height - 1:
-        raise Exception('O eixo y da posição inicial não pode ser maior que a quantidade de linhas')
-    
-    if matrix[y][x] < 0:
-        raise Exception('A posição inicial não pode estar em um local inacessível')
+    start_vertice = graph.get_vertice(start_x, start_y)
+    end_vertice = graph.get_vertice(end_x, end_y)
 
-    return (x, y)
+    memo = {start_key: {'cost': start_vertice.cost, 'from': None}}
 
-def get_end(size, matrix):
-    while True:
-        _input = input('Informe a coordenada de destino: (formato: \'x y\'): ')
-        elements = _input.strip().split()
-        if len(elements) != 2:
-            print('A entrada deve possuir apenas 2 elementos')
-            continue
+    priority = PriorityQueue()
+    priority.put((0, start_key))
 
-        try:
-            vertice = (int(elements[0]), int(elements[1]))
+    while not priority.empty():
+        (_, current_vertice_key) = priority.get()
 
-            (x, y) = vertice
+        if current_vertice_key == end_key:
+            break
 
-            width = size['width']
-            height = size['height']
+        current_vertice = graph.get_vertice(current_vertice_key[0], current_vertice_key[1])
 
-            if x < 0 or y < 0:
-                raise Exception('Os valores da coordenada não podem ser menores que zero')
+        for next_vertice in graph.get_neighbors(current_vertice):
+            next_vertice_key = (next_vertice.coordinate.x, next_vertice.coordinate.y)
+            new_cost = memo[current_vertice_key]['cost'] + next_vertice.cost + 1
+            if next_vertice_key not in memo or new_cost < memo[next_vertice_key]['cost']:
+                memo[next_vertice_key] = {'cost': new_cost, 'from': current_vertice_key}
+                priority.put((new_cost + heuristic(end_vertice, next_vertice), next_vertice_key))
 
-            if x > width - 1:
-                raise Exception('O eixo x da posição final não pode ser maior que a quantidade de colunas')
-            
-            if y > height - 1:
-                raise Exception('O eixo y da posição final não pode ser maior que a quantidade de linhas')
-            
-            if matrix[y][x] < 0:
-                raise Exception('A posição final não pode estar em um local inacessível')
+    return memo
 
-            if x < 0 or y < 0:
-                raise Exception('Os valores da coordenada não podem ser menores que zero')
-
-            return vertice
-            
-        except Exception as exception:
-            print(exception)
-
-def get_map_matrix(lines, size):
-    width = size['width']
-    height = size['height']
-
-    if len(lines) != height:
-        raise Exception('A quantidade de linhas do mapa não pode ser diferente da sua altura')
-    
-    matrix = []
-    line_count = 0
-    while line_count < height:
-        matrix.append([])
-        line = lines[line_count]
-        elements = line.strip().split()
-        if len(elements) != width:
-            raise Exception('A quantidade de colunas do mapa não pode ser diferente da sua largura')
-        
-        column_count = 0
-        while column_count < width:
-            cost = int(elements[column_count])
-            if cost < -1:
-                raise Exception('Os valores não podem ser menores que -1')
-            
-            matrix[line_count].append(cost)
-            column_count += 1
-        line_count += 1
-
-    return matrix
-
-def get_map(file_lines):
-    file_lines = get_file_lines(file_path)
-    if len(file_lines) < 3:
-        raise Exception('A definição do mapa deve possuir pelo menos 3 linhas!')
-    
-    size = get_first_line(file_lines[0])
-    map_matrix = get_map_matrix(file_lines[2:], size)
-    start = get_second_line(file_lines[1], size, map_matrix)
-    end = get_end(size, map_matrix)
-    
-    map = dict()
-    map['size'] = size
-    map['start'] = start
-    map['end'] = end
-    map['matrix'] = map_matrix
-
-    return map
-
-def memoization(subproblem):
-    def get_subproblem_solution(*args):
-        arguments_key = tuple(args)
-        if arguments_key not in memo:
-            memo[arguments_key] = subproblem(*args)
-
-        return memo[arguments_key]
-
-    memo = {}
-    return get_subproblem_solution
-
-def a_start_aux(map, control):
-    matrix = map['matrix']
-    end = map['end']
-    came_from = control['came_from']
-    cost_so_far = control['cost_so_far']
-    vertice = control['vertice']
-    current_vertice = vertice
-
-    priority_queue = PriorityQueue()
-    for next_vertice in get_neighbors(matrix, current_vertice):
-        new_cost = cost_so_far[current_vertice] + get_cost(matrix, next_vertice) + 1
-        if next_vertice not in cost_so_far or new_cost < cost_so_far[next_vertice]:
-            cost_so_far[next_vertice] = new_cost
-            priority = new_cost + heuristic(end, next_vertice)
-            priority_queue.put(next_vertice, priority)
-            came_from[next_vertice] = current_vertice
-
-    while not priority_queue.empty():
-        new_vertice = priority_queue.get()
-        control['vertice'] = new_vertice
-        a_start_aux(map, control)
-
-def a_star(map):
-    start = map['start']
-    end = map['end']
-    matrix = map['matrix']
-    start_cost = get_cost(matrix, start)
-    came_from = { start: None }
-    cost_so_far = { start: start_cost }
-
-    control = {
-        'came_from': came_from,
-        'cost_so_far': cost_so_far,
-        'vertice': start
-    }
-
-    a_start_aux(map, control)
-
-    result = {
-        'cost': cost_so_far[end],
-        'path': get_path(came_from, end, start)
-    }
-    return result
-
-def get_path(came_from, end, start):
-    path = [end]
-    current_path = came_from[end]
+def get_path_and_cost(star_result, end_coordinate, start_coordinate):
+    end_key = (end_coordinate.x, end_coordinate.y)
+    start_key = (start_coordinate.x, start_coordinate.y)
+    path = [end_key]
+    current_path = star_result[end_key]['from']
 
     if current_path is None:
         return path
 
     path.append(current_path)
-    while current_path != start:
-        current_path = came_from[current_path]
+    while current_path != start_key:
+        current_path = star_result[current_path]['from']
         path.append(current_path)
 
     path.reverse()
-    return path
-
-def get_cost(matrix, vertice):
-    (x, y) = vertice
-    return matrix[y][x]
-
-def get_neighbors(matrix, vertice):
-    (x, y) = vertice
-
-    neighbors = []
-
-    # top
-    if y - 1 >= 0 and matrix[y - 1][x] >= 0:
-        top_neighbor = (x, y - 1)
-        neighbors.append(top_neighbor)
-
-    # left
-    if x - 1 >= 0 and matrix[y][x - 1] >= 0:
-        left_neighbor = (x - 1, y)
-        neighbors.append(left_neighbor)
-
-    # bottom
-    if y + 1 < len(matrix) and matrix[y + 1][x] >= 0:
-        bottom_neighbor = (x, y + 1)
-        neighbors.append(bottom_neighbor)
-
-    # right
-    if x + 1 < len(matrix[0]) and matrix[y][x + 1] >= 0:
-        right_neighbor = (x + 1, y)
-        neighbors.append(right_neighbor)
-
-    return neighbors
-
-def heuristic(_from, to):
-    (from_x, from_y) = _from
-    (to_x, to_y) = to
-
-    return abs(from_x - to_x) + abs(from_y - to_y)
-
-def print_path(path, map):
-    best_path = get_best_path(path)
-    line_count = 0
-    size = map['size']
-    width = size['width']
-    height = size['height']
-    matrix = map['matrix']
-    start = map['start']
-    end = map['end']
-    print()
-    while line_count < height:
-        column_count = 0
-        line = ''
-        while column_count < width:
-            coordinate = (column_count, line_count)
-            cost = matrix[line_count][column_count]
-            if coordinate == start:
-                line += ' S '
-            elif coordinate == end:
-                line += ' E '
-            elif coordinate in best_path:
-                line += best_path[coordinate]
-            elif cost < 0:
-                line += ' ■ '
-            else:
-                line += ' - '
-
-            column_count += 1
-
-        print(line + '\n')
-        line_count += 1
-
-def print_exit(cost, coordinates):
-    exit = f'{cost}'
-    count = 0
-    while count < len(coordinates):
-        coordinate = coordinates[count]
-        (x, y) = coordinate
-        exit += f'  {x},{y}'
-        count += 1
-    print(exit)
+    return (path, star_result[end_key]['cost'])
 
 def get_best_path(path):
     best_path = dict()
@@ -309,15 +326,68 @@ def get_best_path(path):
         vertice_count -= 1
     
     return best_path
+
+def print_path(path, inputFile):
+    start_coordinate = inputFile.start
+    start_key = (start_coordinate.x, start_coordinate.y)
+    end_coordinate = inputFile.end
+    end_key = (end_coordinate.x, end_coordinate.y)
+    size = inputFile.size
+    line_count = 0
+    best_path = get_best_path(path)
+    while line_count < size.height:
+        column_count = 0
+        line = ''
+        while column_count < size.width:
+            coordinate = (column_count, line_count)
+            cost = inputFile.matrix[line_count][column_count]
+            if coordinate == start_key:
+                line += ' S '
+            elif coordinate == end_key:
+                line += ' E '
+            elif coordinate in best_path:
+                line += best_path[coordinate]
+            elif cost < 0:
+                line += ' ■ '
+            else:
+                line += '   '
+
+            column_count += 1
+
+        print(line + '\n')
+        line_count += 1
+
+def print_exit(cost, coordinates):
+    exit = f'{cost}'
+    count = 0
+    while count < len(coordinates):
+        coordinate = coordinates[count]
+        (x, y) = coordinate
+        exit += f'  {x},{y}'
+        count += 1
+    print(exit)
         
 if __name__ == '__main__':
     current_directory = get_current_directory()
     file_path = get_map_file_path(current_directory)
     file_lines = get_file_lines(file_path)
-    map = get_map(file_lines)
-    result = a_star(map)
+    if len(file_lines) < 3:
+        raise Exception('A definição do mapa deve possuir pelo menos 3 linhas!')
+    
+    inputFile = InputFile(file_lines[0], file_lines[1], file_lines[2:])
 
-    path = result['path']
-    cost = result['cost']
-    print_path(path, map)
+    start = inputFile.start
+    end = inputFile.end
+
+    graph = inputFile.get_graph()
+    result = a_star(graph, start, end)
+    (path, cost) = get_path_and_cost(result, end, start)
+    print_path(path, inputFile)
     print_exit(cost, path)
+
+    # result = a_star(map)
+
+    # path = result['path']
+    # cost = result['cost']
+    # print_path(path, map)
+    # print_exit(cost, path)
